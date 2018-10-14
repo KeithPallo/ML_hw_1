@@ -17,10 +17,19 @@ def ID3(examples, default):
 
   elif same_class(examples) or no_non_trivial(examples):
     mode = choose_mode(examples)
-    return node(label = mode)
+    return Node(label = mode)
 
   else:
-      pass
+      attribute, examples_list = choose_best(examples)
+      t = Node(label = attribute,examples = examples_list)
+
+      for i in examples_list:
+        subtree = ID3(i,choose_mode(i))
+        t.add_subtree(subtree,subtree.split_type())
+
+      return t
+
+
 
 def prune(node, examples):
   '''
@@ -51,10 +60,12 @@ def evaluate(node, example):
   Takes in a tree and one example.  Returns the Class value that the tree
   assigns to the example.
   '''
-  pass
+
+
+
 
 # Custom definitions created
-
+# -----------------------------------------------------------------------------
 def test_example(node,example):
     pass
 
@@ -72,13 +83,17 @@ def choose_best(examples):
 
     split_val = -10000
     attribute = "None"
+    examples_list = []
 
     for i in potential_splits:
-        pass
-        current, vals = entropy(examples,i)
-        #split_val = max(split_val,current)
 
-    return attribute
+        current, values = entropy(examples,i)
+        if current > split_val:
+            split_val = current
+            attribute = i
+            examples_list = values
+
+    return attribute, examples_list
 
     # For all potential splits
         # sum ( num of elements in split * E(class))
@@ -91,9 +106,12 @@ def entropy(examples,i):
   list_of_groups = [] # Type list of list of dictionary
   g_num = 0
   dict_of_groups = {}
+  num_examples = 0
+
 
   for j in examples:
 
+    num_examples += 1
     current = j[i]
     #print(current)
 
@@ -105,12 +123,36 @@ def entropy(examples,i):
       dict_of_groups[current] = g_num
       g_num += 1
       list_of_groups.append([j])
-
+  #print(i, list_of_groups)
   for k in list_of_groups:
+      in_list = len(k)
+      nested_prob = 0
+
+      m = class_counter(k)
+
+      for n in m.values():
+          lg_val = math.log((n/in_list),2)
+          nested_prob += (n/in_list) * (lg_val)
+
+      entropy += (in_list / num_examples) * nested_prob
+  return entropy, list_of_groups
 
 
 
 
+
+def class_counter(examples):
+    dict = {}
+
+    for i in examples:
+        class_current = i["Class"]
+
+        if class_counter in dict.keys():
+            dict[class_counter] += 1
+        else:
+            dict[class_counter] = 1
+
+    return dict
 
 
 
@@ -137,7 +179,7 @@ def same_class(examples):
     """
 
     if not examples:
-        return
+        return False
 
     check_list = []
 
@@ -158,9 +200,8 @@ def no_non_trivial(examples):
 
 
 
-data = [ dict(a=1, b=1, Class=1), dict(a=2, b=1, Class=1),dict(a=3, b=0, Class=1), dict(a=3, b=1, Class=1)]
+data = [ dict(a=1, b=1, Class=2), dict(a=2, b=1, Class=1),dict(a=3, b=0, Class=1), dict(a=3, b=1, Class=1)]
 
 #print(type(data))
 #print(same_class(data))
-
-print(entropy(data,"a"))
+#print(ID3(data,"fail"))
