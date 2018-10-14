@@ -1,0 +1,11 @@
+Build tree up
+  -Choose best
+
+# Start with additional copy of examples and truncate as trimming downward
+
+# Track attributes that have been used - how to do this
+    # Create a list that tracks what you have used thus far
+    # Truncate from the passed in examples
+
+Validate
+  - Use pruning
