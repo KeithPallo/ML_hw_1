@@ -1,7 +1,8 @@
 from node import Node
 import math
 
-def ID3(examples, default):
+
+def ID3(examples, default, root = True):
   '''
   Takes in an array of examples, and returns a tree (an instance of Node)
   trained on the examples.  Each example is a dictionary of attribute:value pairs,
@@ -12,20 +13,38 @@ def ID3(examples, default):
 
   '''
 
-  if not examples:
-    return node(type = default)
+  if root == True:
+    examples_c = []
 
-  elif same_class(examples) or no_non_trivial(examples):
-    mode = choose_mode(examples)
+    for i in examples:
+        deep = i.copy()
+        examples_c.append(deep)
+  else:
+    examples_c = examples
+
+
+  if not examples_c:
+    return Node(label = default)
+
+  elif same_class(examples_c) or no_non_trivial(examples_c):
+    mode = choose_mode(examples_c)
     return Node(label = mode)
 
   else:
-      attribute, examples_list = choose_best(examples)
-      t = Node(label = attribute,examples = examples_list)
+      #print(examples)
+      attribute, examples_list = choose_best(examples_c)
+      t = Node(label = attribute)
+      mode = choose_mode(examples_c)
 
       for i in examples_list:
-        subtree = ID3(i,choose_mode(i))
-        t.add_subtree(subtree,subtree.split_type())
+        split_attribute = i[0][attribute]
+
+        for j in i:
+            del j[attribute]
+
+        subtree = ID3(i,mode,False)
+        #subtree.parent_split(attribute)
+        t.add_subtree(subtree,split_attribute)
 
       return t
 
@@ -43,6 +62,22 @@ def test(node, examples):
   Takes in a trained tree and a test set of examples.  Returns the accuracy (fraction
   of examples the tree classifies correctly).
   '''
+  #print(examples )
+  num_tested = 0
+  num_correct = 0
+
+  for i in examples:
+    #print(i)
+    num_tested += 1
+
+    predict = evaluate(node,i)
+    correct = i["Class"]
+
+    if predict == correct:
+      num_correct += 1
+
+  return (num_correct / num_tested)
+
   # num correct
   # num tested
 
@@ -60,7 +95,9 @@ def evaluate(node, example):
   Takes in a tree and one example.  Returns the Class value that the tree
   assigns to the example.
   '''
+  x = node.evaluate(example)
 
+  return x
 
 
 
@@ -73,47 +110,45 @@ def ID3_build(examples,default):
     pass
 
 def choose_best(examples):
-    # represents
 
+
+    # Create a list of all possible attributes
     potential_splits = list(examples[0].keys())
-
     potential_splits.remove("Class")
 
-    #print(potential_splits)
-
-    split_val = -10000
+    # Initialize constants
+    split_val = 10000
     attribute = "None"
     examples_list = []
 
+    # For all possible splits, check if min entropy
     for i in potential_splits:
 
+        # Calculate entropy and partitioned examples
         current, values = entropy(examples,i)
-        if current > split_val:
+        if current < split_val:
             split_val = current
             attribute = i
             examples_list = values
 
     return attribute, examples_list
 
-    # For all potential splits
-        # sum ( num of elements in split * E(class))
 
 def entropy(examples,i):
+  # i is the split attribute
 
 
-  # Split on the i for each
   entropy = 0
   list_of_groups = [] # Type list of list of dictionary
   g_num = 0
   dict_of_groups = {}
   num_examples = 0
 
-
+  # accumulate all possible outputs from split i
   for j in examples:
 
     num_examples += 1
     current = j[i]
-    #print(current)
 
     if current in dict_of_groups.keys():
       position = dict_of_groups[current]
@@ -123,18 +158,23 @@ def entropy(examples,i):
       dict_of_groups[current] = g_num
       g_num += 1
       list_of_groups.append([j])
-  #print(i, list_of_groups)
+
   for k in list_of_groups:
       in_list = len(k)
       nested_prob = 0
 
+      # Calculate the number of total classes in this sample
+      # m is of type dictionary. Keys are possible classes
+      # and values are number of time appeared in this group
       m = class_counter(k)
 
+      # Calculate entropy for each individual output
       for n in m.values():
           lg_val = math.log((n/in_list),2)
           nested_prob += (n/in_list) * (lg_val)
 
       entropy += (in_list / num_examples) * nested_prob
+
   return entropy, list_of_groups
 
 
@@ -195,13 +235,33 @@ def same_class(examples):
 
 
 def no_non_trivial(examples):
-    return False
+
+    # return False
+
+    first = list(examples[0].items())
+    first = [i for i in first if i[0] != "Class"]
+
+    for i in range(1,len(examples)):
+        current = list(examples[i].items())
+        current = [j for j in current if current[0] != "Class"]
+
+        if current != first:
+            return False
 
 
+    return True
+
+"""
+"""
 
 
-data = [ dict(a=1, b=1, Class=2), dict(a=2, b=1, Class=1),dict(a=3, b=0, Class=1), dict(a=3, b=1, Class=1)]
 
 #print(type(data))
 #print(same_class(data))
 #print(ID3(data,"fail"))
+
+data = [dict(a=1, b=0, Class=0), dict(a=1, b=1, Class=1)]
+tree = ID3(data, 0)
+#print(tree.children)
+#print(tree.label)
+#print(evaluate(tree, dict(a=1, b=0)))
