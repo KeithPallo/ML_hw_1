@@ -55,6 +55,12 @@ def prune(node, examples):
   Takes in a trained tree and a validation set of examples.  Prunes nodes in order
   to improve accuracy on the validation data; the precise pruning strategy is up to you.
   '''
+  # check to see type of node
+  # if leaf, test vs. mode of current
+
+  # split and pass based on attributes
+
+  # pass in examples to current node
   pass
 
 def test(node, examples):
