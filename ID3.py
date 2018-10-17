@@ -3,7 +3,7 @@ import math
 
 
 def ID3(examples, default, root = True):
-  #print("TEST")
+
   '''
   Takes in an array of examples, and returns a tree (an instance of Node)
   trained on the examples.  Each example is a dictionary of attribute:value pairs,
@@ -32,86 +32,32 @@ def ID3(examples, default, root = True):
     return Node(label = mode,  test_mode = mode)
 
   else:
-      #print(examples)
+
       attribute, examples_list = choose_best(examples_c)
-      #print(attribute)
+
       mode = choose_mode(examples_c,default)
-      #print(mode)
+
+
       t = Node(label = attribute, test_mode =  mode)
 
       for i in examples_list:
         split_attribute = i[0][attribute]
 
         for j in i:
+            if attribute == "Class":
+                print("Potential Problem")
             del j[attribute]
 
-        #down_node = choose_mode(i)
 
-        subtree = ID3(i,default,False)
-        #subtree.parent_split(attribute)
+
+        subtree = ID3(i,mode,False)
+
         t.add_subtree(subtree,split_attribute)
 
       return t
 
 
 
-def prune_2(node, examples):
-  '''
-  Takes in a trained tree and a validation set of examples.  Prunes nodes in order
-  to improve accuracy on the validation data; the precise pruning strategy is up to you.
-  '''
-  #print(examples)
-  #print(node.label)
-  if node.is_leaf() == True:
-      return
-
-
-  # if any children are not leaves, create examples for them and call prune
-
-  for i in node.children.items():
-      if i[1].is_leaf() == False:
-          pass_examples = [ x for x in examples if x[node.label] == i[0]]
-          prune(i[1],pass_examples)
-
-  prune_command = prune_bool(node,examples)
-
-  node.self_prune(prune_command)
-
-
-def prune_bool(node,examples):
-
-  acc_prune = prune_test(node,examples)
-  acc_train = test(node,examples)
-  #print(acc_prune,acc_train)
-
-  if acc_prune > acc_train:
-    #print("test",node.label)
-    return True
-  else:
-    return False
-
-
-def prune_test(node,examples):
-  #print(node.label,examples)
-  #print(node.test_mode)
-  num_tested = 0
-  num_correct = 0
-
-  for i in examples:
-      #print(i)
-    num_tested += 1
-
-    predict = node.prune_evaluate(i)
-    correct = i["Class"]
-    #print(predict,correct)
-
-    if predict == correct:
-      num_correct += 1
-
-  if num_tested == 0:
-      return 0
-  #print(num_correct)
-  return (num_correct / num_tested)
 
 def test(node, examples):
   '''
@@ -134,7 +80,7 @@ def test(node, examples):
 
   if num_tested == 0:
     return 0
-
+  #print(num_tested)
   return (num_correct / num_tested)
 
 
@@ -169,6 +115,7 @@ def choose_best(examples):
 
         # Calculate entropy and partitioned examples
         current, values = entropy(examples,i)
+
         if current < split_val:
             split_val = current
             attribute = i
@@ -202,6 +149,8 @@ def entropy(examples,i):
       g_num += 1
       list_of_groups.append([j])
 
+
+
   for k in list_of_groups:
       in_list = len(k)
       nested_prob = 0
@@ -212,34 +161,34 @@ def entropy(examples,i):
       m = class_counter(k)
 
       # Calculate entropy for each individual output
-      for n in m.values():
+      for n in m:
           lg_val = math.log((n/in_list),2)
-          nested_prob += (n/in_list) * (lg_val)
+          nested_prob = (n/in_list) * (lg_val)
+          entropy -= (in_list / num_examples) * nested_prob
 
-      entropy += (in_list / num_examples) * nested_prob
+
 
   return entropy, list_of_groups
 
 
 
 def class_counter(examples):
-    dict = {}
+    counter = {}
 
     for i in examples:
         class_current = i["Class"]
 
-        if class_counter in dict.keys():
-            dict[class_counter] += 1
+        if class_current in list(counter.keys()):
+            counter[class_current] += 1
         else:
-            dict[class_counter] = 1
-
-    return dict
+            counter[class_current] = 1
+    return list(counter.values())
 
 
 
 
 def choose_mode(examples,default):
-    #print(examples)
+
     dict_of_freq = dict()
 
     for i in examples:
@@ -252,7 +201,6 @@ def choose_mode(examples,default):
 
     potential = max(dict_of_freq,key=dict_of_freq.get)
 
-    #print(dict_of_freq,potential,default)
 
     if default in dict_of_freq.keys():
         if dict_of_freq[default] >= dict_of_freq[potential]:
@@ -316,23 +264,22 @@ def prune(node, examples):
     # other case  - determine if all  children. If so test on self
     if node.all_children_leaf() == True:
       potential = [node]
-      #print(node.label)
+
 
       bool = prune_if_possible(potential,node,examples)
-      #print(bool)
+
       if bool == False:
         x = False
 
 
     else:
       potential = find_potential_prunes(node)
-      #print(potential)
      # get current accuracy on the validation set using standard test
 
 
       # Pass to prune if possible
       bool = prune_if_possible(potential,node,examples)
-      #print(bool)
+
       if bool == False:
         x = False
 
@@ -353,20 +300,17 @@ def find_potential_prunes(node):
     potential = []
 
     if node.all_children_leaf() == True:
-        #print(node.label)
         return [node]
-    #print("test")
+
     for i in node.children.values():
         if i.all_children_leaf() == True:
             potential.append(i)
         else:
-            #if i.some_leaf() == True:
-            #    potential.append(i)
+            if i.some_leaf() == True:
+                potential.append(i)
             potential_below = find_potential_prunes(i)
             potential.extend(potential_below)
-        #else:
-        #    potential_below = find_potential_prunes(i)
-        #    potential.extend(potential_below)
+
 
     return potential
 
@@ -379,24 +323,21 @@ def prune_if_possible(list_of_node,root,examples):
   current_accuracy = test(root,examples)
 
   for i in list_of_node:
-    #print(i.type)
+
     holder = i.label
     i.label = i.test_mode
     i.type = "Prune"
     prune_accuracy = test(root,examples)
-    #print(prune_accuracy,current_accuracy)
+
     if prune_accuracy > max_accuracy:
-      #print("pruned")
       pointer = i
       max_accuracy = prune_accuracy
 
     i.label = holder
     i.type = "Split"
-    #i.prune_test = True
 
   if max_accuracy > current_accuracy:
     pointer.self_prune(True)
-    #print("pruned")
     pruned_nodes = True
 
 
@@ -409,17 +350,16 @@ def prune_if_possible_2(list_of_node,root,examples):
   current_accuracy = test(root,examples)
 
   for i in list_of_node:
-    #print(i.label)
     current_leaves = i.node_leaves()
 
     for j in current_leaves:
 
         i.prune_this_leaf(j)
         new_accuracy = test(root,examples)
-        #print(new_accuracy,current_accuracy)
         if new_accuracy > current_accuracy:
-            new_accuracy = current_accuracy
+            current_accuracy = new_accuracy
             i.finish_leaf_prune()
+
         else:
             i.unprune_leaf()
 
@@ -430,16 +370,54 @@ def prune_if_possible_2(list_of_node,root,examples):
 
 
 
+def prune_2(node, examples):
+  '''
+  Takes in a trained tree and a validation set of examples.  Prunes nodes in order
+  to improve accuracy on the validation data; the precise pruning strategy is up to you.
+  '''
+
+  if node.is_leaf() == True:
+      return
 
 
+  for i in node.children.items():
+      if i[1].is_leaf() == False:
+          pass_examples = [ x for x in examples if x[node.label] == i[0]]
+          prune(i[1],pass_examples)
+
+  prune_command = prune_bool(node,examples)
+
+  node.self_prune(prune_command)
 
 
-#print(type(data))
-#print(same_class(data))
-#print(ID3(data,"fail"))
+def prune_bool(node,examples):
 
-#data = [dict(a=1, b=0, Class=0), dict(a=1, b=1, Class=1)]
-#tree = ID3(data, 0)
-#print(tree.children)
-#print(tree.label)
-#print(evaluate(tree, dict(a=1, b=0)))
+  acc_prune = prune_test(node,examples)
+  acc_train = test(node,examples)
+
+  if acc_prune > acc_train:
+    return True
+
+  else:
+    return False
+
+
+def prune_test(node,examples):
+
+  num_tested = 0
+  num_correct = 0
+
+  for i in examples:
+    num_tested += 1
+
+    predict = node.prune_evaluate(i)
+    correct = i["Class"]
+
+
+    if predict == correct:
+      num_correct += 1
+
+  if num_tested == 0:
+      return 0
+
+  return (num_correct / num_tested)
