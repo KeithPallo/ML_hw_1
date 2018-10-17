@@ -25,17 +25,17 @@ def ID3(examples, default, root = True):
 
 
   if not examples_c:
-    return Node(label = default, test_mode = choose_mode(examples_c))
+    return Node(label = default, test_mode = default)
 
   elif same_class(examples_c) or no_non_trivial(examples_c):
-    mode = choose_mode(examples_c)
+    mode = choose_mode(examples_c,default)
     return Node(label = mode,  test_mode = mode)
 
   else:
       #print(examples)
       attribute, examples_list = choose_best(examples_c)
       #print(attribute)
-      mode = choose_mode(examples_c)
+      mode = choose_mode(examples_c,default)
       #print(mode)
       t = Node(label = attribute, test_mode =  mode)
 
@@ -45,7 +45,9 @@ def ID3(examples, default, root = True):
         for j in i:
             del j[attribute]
 
-        subtree = ID3(i,mode,False)
+        #down_node = choose_mode(i)
+
+        subtree = ID3(i,default,False)
         #subtree.parent_split(attribute)
         t.add_subtree(subtree,split_attribute)
 
@@ -220,8 +222,6 @@ def entropy(examples,i):
 
 
 
-
-
 def class_counter(examples):
     dict = {}
 
@@ -238,7 +238,7 @@ def class_counter(examples):
 
 
 
-def choose_mode(examples):
+def choose_mode(examples,default):
     #print(examples)
     dict_of_freq = dict()
 
@@ -250,7 +250,15 @@ def choose_mode(examples):
         else:
             dict_of_freq[current] += 1
 
-    return max(dict_of_freq,key=dict_of_freq.get)
+    potential = max(dict_of_freq,key=dict_of_freq.get)
+
+    #print(dict_of_freq,potential,default)
+
+    if default in dict_of_freq.keys():
+        if dict_of_freq[default] >= dict_of_freq[potential]:
+            return default
+
+    return potential
 
 
 def same_class(examples):
@@ -302,16 +310,15 @@ def prune(node, examples):
   to improve accuracy on the validation data; the precise pruning strategy is up to you.
   '''
 
-  potential = []
   x = True
 
   while x == True:
     # other case  - determine if all  children. If so test on self
     if node.all_children_leaf() == True:
       potential = [node]
-      #print("test")
+      #print(node.label)
 
-      bool = prune_if_possible(potential,node,examples,current_accuracy)
+      bool = prune_if_possible(potential,node,examples)
       #print(bool)
       if bool == False:
         x = False
@@ -321,68 +328,109 @@ def prune(node, examples):
       potential = find_potential_prunes(node)
       #print(potential)
      # get current accuracy on the validation set using standard test
-      current_accuracy = test(node,examples)
+
 
       # Pass to prune if possible
-      bool = prune_if_possible(potential,node,examples,current_accuracy)
+      bool = prune_if_possible(potential,node,examples)
       #print(bool)
       if bool == False:
         x = False
 
+def find_potential_prunes(node):
 
-def prune_if_possible(list_of_node,root,examples,current_accuracy):
+      # for each node in the prune_evaluate:
+          # directly mutate label value to mode values
+          # test accuracy
+          # update initialize variables
+
+      # See if need to prune:
+          # if prune, recursively call
+          # else return
+
+    #itype = None
+    #rtype = List of Nodes
+
+    potential = []
+
+    if node.all_children_leaf() == True:
+        #print(node.label)
+        return [node]
+    #print("test")
+    for i in node.children.values():
+        if i.all_children_leaf() == True:
+            potential.append(i)
+        else:
+            #if i.some_leaf() == True:
+            #    potential.append(i)
+            potential_below = find_potential_prunes(i)
+            potential.extend(potential_below)
+        #else:
+        #    potential_below = find_potential_prunes(i)
+        #    potential.extend(potential_below)
+
+    return potential
+
+
+def prune_if_possible(list_of_node,root,examples):
 
   max_accuracy = 0
+  pruned_nodes = False
   pointer = None
+  current_accuracy = test(root,examples)
 
   for i in list_of_node:
+    #print(i.type)
     holder = i.label
     i.label = i.test_mode
     i.type = "Prune"
     prune_accuracy = test(root,examples)
-    #print(prune_accuracy)
+    #print(prune_accuracy,current_accuracy)
     if prune_accuracy > max_accuracy:
-      max_accuracy = prune_accuracy
+      #print("pruned")
       pointer = i
+      max_accuracy = prune_accuracy
 
     i.label = holder
     i.type = "Split"
+    #i.prune_test = True
 
   if max_accuracy > current_accuracy:
-    print("MUTATE")
     pointer.self_prune(True)
-    return True
-
-  return False
-
+    #print("pruned")
+    pruned_nodes = True
 
 
+  return pruned_nodes
 
-  # for each node in the prune_evaluate:
-      # directly mutate label value to mode values
-      # test accuracy
-      # update initialize variables
 
-  # See if need to prune:
-      # if prune, recursively call
-      # else return
+def prune_if_possible_2(list_of_node,root,examples):
 
-def find_potential_prunes(node):
-    #itype = None
-    #rtype = List of Nodes
-    potential = []
+  new_possibility = False
+  current_accuracy = test(root,examples)
 
-    if node.all_children_leaf() == True:
-        return
+  for i in list_of_node:
+    #print(i.label)
+    current_leaves = i.node_leaves()
 
-    for i in node.children.values():
-        if i.type == "Split":
-            potential.append(i)
+    for j in current_leaves:
+
+        i.prune_this_leaf(j)
+        new_accuracy = test(root,examples)
+        #print(new_accuracy,current_accuracy)
+        if new_accuracy > current_accuracy:
+            new_accuracy = current_accuracy
+            i.finish_leaf_prune()
         else:
-            potential_below = find_potential_prunes(i)
-            potential.extend(potential_below)
+            i.unprune_leaf()
 
-    return potential
+    if i.is_leaf() == True:
+        new_possibility = True
+
+  return new_possibility
+
+
+
+
 
 
 

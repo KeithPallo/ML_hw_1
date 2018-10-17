@@ -5,6 +5,8 @@ class Node:
     self.parent_split = None
     self.type = "Leaf"
     self.test_mode = test_mode
+    self.prune_test = False
+    self.prune_hold = None
 
     # you may want to add additional fields here...
     # self.examples = examples
@@ -74,10 +76,44 @@ class Node:
 
       return True
 
+  def some_leaf(self):
+    if self.is_leaf():
+      return False
+    else:
+      for i in self.children.values():
+        if i.is_leaf():
+          True
+
+      return False
+
+
   def self_prune(self,bool):
       if bool == True:
           self.children = {}
           self.type  = "Leaf"
           self.label = self.test_mode
+          self.prune_test = False
       else:
           return
+
+
+  def node_leaves(self):
+      my_leaves = []
+
+      for claim, i in self.children.items():
+          if i.is_leaf() == True:
+              my_leaves.append((claim))
+
+      return my_leaves
+
+  def prune_this_leaf(self,name):
+      self.prune_hold = (name,self.children.pop(name))
+
+  def finish_leaf_prune(self):
+      self.prune_hold = None
+
+  def unprune_leaf(self):
+      name = self.prune_hold[0]
+      sub = self.prune_hold[1]
+
+      self.children[name] = sub
