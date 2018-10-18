@@ -10,52 +10,74 @@ def ID3(examples, default, root = True):
   and the target class variable is a special attribute with the name "Class".
   Any missing attributes are denoted with a value of "?"
 
-  Itype: List of Dictionaries
+  Itype: List of Dictionaries, default valuae, optional root argument
 
   '''
-
+  # If the node is a root, make a deep copy.
   if root == True:
     examples_c = []
 
     for i in examples:
         deep = i.copy()
         examples_c.append(deep)
+
   else:
     examples_c = examples
 
-
+  # Perform Standard ID3 Algorithm
   if not examples_c:
-    return Node(label = default, test_mode = default)
+    return Node(label = default, train_mode = default)
 
   elif same_class(examples_c) or no_non_trivial(examples_c):
     mode = choose_mode(examples_c,default)
-    return Node(label = mode,  test_mode = mode)
+    return Node(label = mode,  train_mode = mode)
 
   else:
-
+      # Attribute = Split attribute, examples_list = list of list of dictionaries
       attribute, examples_list = choose_best(examples_c)
-
       mode = choose_mode(examples_c,default)
 
-
-      t = Node(label = attribute, test_mode =  mode)
+      t = Node(label = attribute, train_mode =  mode)
 
       for i in examples_list:
         split_attribute = i[0][attribute]
 
+        # Added - delete attribute used to speed up future info gain calculation
         for j in i:
             if attribute == "Class":
                 print("Potential Problem")
             del j[attribute]
 
-
-
         subtree = ID3(i,mode,False)
-
         t.add_subtree(subtree,split_attribute)
 
       return t
 
+def prune(node, examples):
+  '''
+  Takes in a trained tree and a validation set of examples.  Prunes nodes in order
+  to improve accuracy on the validation data; the precise pruning strategy is up to you.
+  '''
+
+  x = True
+
+  while x == True:
+    # No need to call find_potential_prunes if root only has Leaf children.
+    if node.all_children_leaf() == True:
+      potential = [node]
+
+      bool = prune_if_possible(potential,node,examples)
+
+      if bool == False:
+        x = False
+
+    else:
+      potential = find_potential_prunes(node)
+
+      bool = prune_if_possible(potential,node,examples)
+
+      if bool == False:
+        x = False
 
 
 
@@ -64,12 +86,12 @@ def test(node, examples):
   Takes in a trained tree and a test set of examples.  Returns the accuracy (fraction
   of examples the tree classifies correctly).
   '''
-  #print(examples )
+
   num_tested = 0
   num_correct = 0
 
   for i in examples:
-    #print(i)
+
     num_tested += 1
 
     predict = evaluate(node,i)
@@ -80,7 +102,7 @@ def test(node, examples):
 
   if num_tested == 0:
     return 0
-  #print(num_tested)
+
   return (num_correct / num_tested)
 
 
@@ -99,9 +121,14 @@ def evaluate(node, example):
 # -----------------------------------------------------------------------------
 
 def choose_best(examples):
+    """
+    Chooses best attribute to split on given a list of attributes. Returns
+    attribute and partioned examples in list of list of dictionary format.
+    Itype: List of dictionary
+    Rtpye: String, List of List of Dictionary
+    """
 
-
-    # Create a list of all possible attributes
+    # Create a list of all possible splt attributes excluding Class
     potential_splits = list(examples[0].keys())
     potential_splits.remove("Class")
 
@@ -110,11 +137,11 @@ def choose_best(examples):
     attribute = "None"
     examples_list = []
 
-    # For all possible splits, check if min entropy
+    # For all possible splits, check if min info_gain
     for i in potential_splits:
 
-        # Calculate entropy and partitioned examples
-        current, values = entropy(examples,i)
+        # Calculate info_gain / info gain and partitioned examples
+        current, values = info_gain(examples,i)
 
         if current < split_val:
             split_val = current
@@ -124,17 +151,22 @@ def choose_best(examples):
     return attribute, examples_list
 
 
-def entropy(examples,i):
+def info_gain(examples,i):
+  """
+  Calculates info gain based on examples and passed in attribute. Returns
+  attribute and partioned examples in list of list of dictionary format.
+  Itype: List of Dictionaries, String
+  Rtype: String, List of List of Dictionary
+  """
   # i is the split attribute
 
-
-  entropy = 0
+  info_gain = 0
   list_of_groups = [] # Type list of list of dictionary
   g_num = 0
   dict_of_groups = {}
   num_examples = 0
 
-  # accumulate all possible outputs from split i
+  # accumulate all possible classification outputs from split i
   for j in examples:
 
     num_examples += 1
@@ -149,8 +181,6 @@ def entropy(examples,i):
       g_num += 1
       list_of_groups.append([j])
 
-
-
   for k in list_of_groups:
       in_list = len(k)
       nested_prob = 0
@@ -164,15 +194,21 @@ def entropy(examples,i):
       for n in m:
           lg_val = math.log((n/in_list),2)
           nested_prob = (n/in_list) * (lg_val)
-          entropy -= (in_list / num_examples) * nested_prob
 
+          # update info gain
+          info_gain -= (in_list / num_examples) * nested_prob
 
-
-  return entropy, list_of_groups
+  return info_gain, list_of_groups
 
 
 
 def class_counter(examples):
+    """
+    Returns frequency of different types of classes in list format. No info
+    is given about the class for each frequency.
+    Itype: List of Dict
+    Rtype: List of Int
+    """
     counter = {}
 
     for i in examples:
@@ -188,6 +224,11 @@ def class_counter(examples):
 
 
 def choose_mode(examples,default):
+    """
+    Returns most common classification for given examples. If Tie, uses default.
+    Itype: List of Dict, string
+    Rtype: String
+    """
 
     dict_of_freq = dict()
 
@@ -232,8 +273,11 @@ def same_class(examples):
 
 
 def no_non_trivial(examples):
-
-    # return False
+    """
+    Returns True if all attributes for given examples are the same.
+    Itype: List of Dictionaries
+    Rtype: Boolean
+    """
 
     first = list(examples[0].items())
     first = [i for i in first if i[0] != "Class"]
@@ -248,54 +292,15 @@ def no_non_trivial(examples):
 
     return True
 
-"""
-"""
 
-
-def prune(node, examples):
-  '''
-  Takes in a trained tree and a validation set of examples.  Prunes nodes in order
-  to improve accuracy on the validation data; the precise pruning strategy is up to you.
-  '''
-
-  x = True
-
-  while x == True:
-    # other case  - determine if all  children. If so test on self
-    if node.all_children_leaf() == True:
-      potential = [node]
-
-
-      bool = prune_if_possible(potential,node,examples)
-
-      if bool == False:
-        x = False
-
-
-    else:
-      potential = find_potential_prunes(node)
-     # get current accuracy on the validation set using standard test
-
-
-      # Pass to prune if possible
-      bool = prune_if_possible(potential,node,examples)
-
-      if bool == False:
-        x = False
 
 def find_potential_prunes(node):
-
-      # for each node in the prune_evaluate:
-          # directly mutate label value to mode values
-          # test accuracy
-          # update initialize variables
-
-      # See if need to prune:
-          # if prune, recursively call
-          # else return
-
-    #itype = None
-    #rtype = List of Nodes
+    """
+    Returns a list of all nodes that have at least one node that is a leaf /
+    is a classification node. Meant to be called from root only.
+    Itype: Node
+    Rtype: List of Nodes
+    """
 
     potential = []
 
@@ -316,6 +321,13 @@ def find_potential_prunes(node):
 
 
 def prune_if_possible(list_of_node,root,examples):
+  """
+  Checks all possible nodes to prune independently. Only prunes best node
+  if better than standard built tree. Returns Boolean if a node was
+  pruned.
+  Itype: List of Node, Node, List of Dict
+  Rtype: Boolean
+  """
 
   max_accuracy = 0
   pruned_nodes = False
@@ -325,7 +337,7 @@ def prune_if_possible(list_of_node,root,examples):
   for i in list_of_node:
 
     holder = i.label
-    i.label = i.test_mode
+    i.label = i.train_mode
     i.type = "Prune"
     prune_accuracy = test(root,examples)
 
@@ -340,12 +352,16 @@ def prune_if_possible(list_of_node,root,examples):
     pointer.self_prune(True)
     pruned_nodes = True
 
-
   return pruned_nodes
 
 
 def prune_if_possible_2(list_of_node,root,examples):
-
+  """
+  Checks all leaf nodes to prune independently if aids in accuracy.
+  Returns Boolean if a split node was converted to a leaf node.
+  Itype: List of Node, Node, List of Dict
+  Rtype: Boolean
+  """
   new_possibility = False
   current_accuracy = test(root,examples)
 
@@ -374,6 +390,8 @@ def prune_2(node, examples):
   '''
   Takes in a trained tree and a validation set of examples.  Prunes nodes in order
   to improve accuracy on the validation data; the precise pruning strategy is up to you.
+
+  Follows prune_2 strategy as documents in writeup.
   '''
 
   if node.is_leaf() == True:
@@ -383,7 +401,7 @@ def prune_2(node, examples):
   for i in node.children.items():
       if i[1].is_leaf() == False:
           pass_examples = [ x for x in examples if x[node.label] == i[0]]
-          prune(i[1],pass_examples)
+          prune_2(i[1],pass_examples)
 
   prune_command = prune_bool(node,examples)
 
@@ -391,7 +409,9 @@ def prune_2(node, examples):
 
 
 def prune_bool(node,examples):
-
+  """
+  Prune2 helper function.
+  """
   acc_prune = prune_test(node,examples)
   acc_train = test(node,examples)
 
@@ -403,7 +423,9 @@ def prune_bool(node,examples):
 
 
 def prune_test(node,examples):
-
+  """
+  Prune2 helper function.
+  """
   num_tested = 0
   num_correct = 0
 

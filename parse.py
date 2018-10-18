@@ -17,10 +17,3 @@ def parse(filename):
     out.append(dict(zip(headers, row)))
 
   return out
-
-
-# Added Code
-
-#housing = parse("house_votes_84.data")
-#for i in housing:
-#    print(i,end = "\n")

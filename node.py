@@ -1,21 +1,31 @@
 class Node:
-  def __init__(self, label = False, test_mode = None):
+  def __init__(self, label = False, train_mode = None):
     self.label = label # Class type or attribute to split on
     self.children = {}
-    self.parent_split = None
     self.type = "Leaf"
-    self.test_mode = test_mode
-    self.prune_test = False
-    self.prune_hold = None
+    self.train_mode = train_mode
+
+    self.prune_test = False # Only used for additional prune method Prune A
+    self.prune_hold = None  # Only used for additional prune method Prune A
 
 
 # Core
 
   def add_subtree(self,subtree,attribute):
+    """
+    Adds children to current node.
+    """
     self.children[attribute] = subtree
     self.type = "Split"
 
   def evaluate(self,example):
+    """
+    Performs evaluation. If node is a leaf, returns label as classification.
+    If not, attempts to send down tree. If cannot send down because
+    split attribute not present, classified as training mode.
+    Itype: Dictionary
+    Rtype: String (Classification)
+    """
     if self.is_leaf():
       return self.label
 
@@ -26,15 +36,22 @@ class Node:
         sub = self.children[split]
         return sub.evaluate(example)
       except:
-        return self.test_mode
+        return self.train_mode
 
   def is_leaf(self):
+    """
+    Checks if current node is of type leaf. Redundantly checks
+    type for safe pruning.
+    """
     if len(self.children) == 0 or self.type == "Leaf" or self.type == "Prune":
       return True
     else:
       return False
 
   def all_children_leaf(self):
+    """
+    Checks is all children are leaves. Returns Boolean.
+    """
     if self.is_leaf():
       return False
     else:
@@ -45,6 +62,9 @@ class Node:
       return True
 
   def some_leaf(self):
+    """
+    Checks is some children are leaves. Returns Boolean.
+    """
     if self.is_leaf():
       return False
     else:
@@ -55,10 +75,14 @@ class Node:
       return False
 
   def self_prune(self,bool):
+      """
+      Permanantly prunes self. All childen are released from memory.
+      To prune, input bool must be of type True.
+      """
       if bool == True:
           self.children = {}
           self.type  = "Leaf"
-          self.label = self.test_mode
+          self.label = self.train_mode
           self.prune_test = False
       else:
           return
@@ -66,6 +90,9 @@ class Node:
 # Prune core with get_method_2
 
   def node_leaves(self):
+      """
+      Additional Prune method A helper. Returns all leafs.
+      """
       my_leaves = []
 
       for claim, i in self.children.items():
@@ -75,23 +102,34 @@ class Node:
       return my_leaves
 
   def prune_this_leaf(self,name):
+      """
+      Additional Prune method A helper. Performs temporary prune.
+      """
       self.prune_hold = (name,self.children.pop(name))
 
   def finish_leaf_prune(self):
+      """
+      Additional Prune method A helper. Performs permanent prune.
+      """
       self.prune_hold = None
 
   def unprune_leaf(self):
+      """
+      Additional Prune method A helper. Mutates temporary prune back
+      to original state.
+      """
       name = self.prune_hold[0]
       sub = self.prune_hold[1]
 
       self.children[name] = sub
 
-# Prune2 method
 
   def prune_evaluate(self,example):
+    """
+    Additional Prune method B helper.
+    """
     if self.all_children_leaf() == True:
-    #print(self.test_mode)
-      return self.test_mode
+      return self.train_mode
 
     else:
       try:
@@ -99,7 +137,7 @@ class Node:
         sub = self.children[split]
         return sub.evaluate(example)
       except:
-        return self.test_mode
+        return self.train_mode
 
     #split = example[self.label]
     #sub = self.children[split]
